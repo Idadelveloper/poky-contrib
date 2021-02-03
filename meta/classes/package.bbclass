@@ -1551,6 +1551,7 @@ PKGDESTWORK = "${WORKDIR}/pkgdata"
 PKGDATA_VARS = "PN PE PV PR PKGE PKGV PKGR LICENSE DESCRIPTION SUMMARY RDEPENDS RPROVIDES RRECOMMENDS RSUGGESTS RREPLACES RCONFLICTS SECTION PKG ALLOW_EMPTY FILES CONFFILES FILES_INFO PACKAGE_ADD_METADATA pkg_postinst pkg_postrm pkg_preinst pkg_prerm"
 
 python emit_pkgdata() {
+    import oe.license
     from glob import glob
     import json
     import subprocess
@@ -1768,7 +1769,21 @@ fi
             lic = d.getVar('LICENSE_%s' % (pkg))
             if not lic:
                 lic = d.getVar('LICENSE')
-            bb.warn("License for package %s is %s vs %s" % (pkg, computedpkglics[pkg], lic))
+
+            # Splits the LICENSE values and canonicalise each license
+            # in the set of split license(s)    
+            split_lic = oe.license.list_licenses(lic)
+            spdx_lic = set([canonical_license(d, l) for l in split_lic])
+            if computedpkglics[pkg]:
+                computedpkglicsperpkg = set([])
+                for l in computedpkglics[pkg]:
+                    if l.endswith('-or-later'):
+                        lic_ = l.replace('-or-later', '+')
+                        computedpkglicsperpkg.add(lic_)
+                    else:
+                        computedpkglicsperpkg.add(l)
+            if spdx_lic - computedpkglicsperpkg:
+                bb.warn("License for package %s is %s vs %s" % (pkg, computedpkglicsperpkg, spdx_lic))
 }
 emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse ${PKGDESTWORK}/runtime-rprovides"
 
