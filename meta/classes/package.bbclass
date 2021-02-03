@@ -1780,8 +1780,9 @@ fi
                             computedpkglicsperpkg.add(lic_)
                     else:
                         computedpkglicsperpkg.add(l)
+            # Displays warnings for licenses found in the recipes and not sources
             if spdx_lic - computedpkglicsperpkg:
-                bb.warn("License for package %s is %s vs %s" % (pkg, computedpkglicsperpkg, spdx_lic))
+                bb.warn("License for package %s is %s (source SPDX headers) vs %s (LICENSE)" % (pkg, computedpkglicsperpkg, spdx_lic))
 }
 emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse ${PKGDESTWORK}/runtime-rprovides"
 
