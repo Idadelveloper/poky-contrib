@@ -1774,6 +1774,10 @@ fi
                     if l.endswith('-or-later'):
                         lic_ = l.replace('-or-later', '+')
                         computedpkglicsperpkg.add(lic_)
+                    elif l.endswith(' WITH Linux-syscall-note'):
+                        if d.getVar("IGNOREWITHLINUXSYSCALLNOTE") == "1":
+                            lic_ = l.replace(' WITH Linux-syscall-note', '')
+                            computedpkglicsperpkg.add(lic_)
                     else:
                         computedpkglicsperpkg.add(l)
             if spdx_lic - computedpkglicsperpkg:
