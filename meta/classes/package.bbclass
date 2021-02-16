@@ -1552,6 +1552,7 @@ PKGDATA_VARS = "PN PE PV PR PKGE PKGV PKGR LICENSE DESCRIPTION SUMMARY RDEPENDS 
 
 python emit_pkgdata() {
     import oe.license
+    import bb.utils
     from glob import glob
     import json
     import subprocess
@@ -1712,83 +1713,73 @@ fi
         write_extra_runtime_pkgs(global_variants, packages, pkgdatadir)
 
     sourceresult = d.getVar('TEMPDBGSRCMAPPING', False)
-    sources = {}
-    if sourceresult:
-        for r in sourceresult:
-            sources[r[0]] = r[1]
-        with open(data_file + ".srclist", 'w') as f:
-            f.write(json.dumps(sources, sort_keys=True))
+    if bb.utils.contains("license_source_spdx", "1", True, False, d):
+        sources = {}
+        if sourceresult:
+            for r in sourceresult:
+                sources[r[0]] = r[1]
+            with open(data_file + ".srclist", 'w') as f:
+                f.write(json.dumps(sources, sort_keys=True))
 
-        filelics = {}
-        for dirent in [d.getVar('PKGD'), d.getVar('STAGING_DIR_TARGET')]:
-            p = subprocess.Popen(["grep", 'SPDX-License-Identifier:', '-R', '-I'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dirent)
-            out, err = p.communicate()
-            if p.returncode == 0:
-                for l in out.decode("utf-8").split("\n"):
-                    l = l.strip()
-                    if not l:
-                        continue
-                    l = l.split(":")
-                    if len(l) < 3:
-                        bb.warn(str(l))
-                        continue
-                    fn = "/" + l[0]
-                    lic = l[2].strip()
-                    if lic.endswith("*/"):
-                        lic = lic[:-2]
-                    lic = lic.strip()
-                    filelics[fn] = lic
-        with open(data_file + ".filelics", 'w') as f:
-            f.write(json.dumps(filelics, sort_keys=True))
+            filelics = {}
+            for dirent in [d.getVar('PKGD'), d.getVar('STAGING_DIR_TARGET')]:
+                p = subprocess.Popen(["grep", 'SPDX-License-Identifier:', '-R', '-I'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dirent)
+                out, err = p.communicate()
+                if p.returncode == 0:
+                    for l in out.decode("utf-8").split("\n"):
+                        l = l.strip()
+                        if not l:
+                            continue
+                        l = l.split(":")
+                        if len(l) < 3:
+                            bb.warn(str(l))
+                            continue
+                        fn = "/" + l[0]
+                        lic = l[2].strip()
+                        if lic.endswith("*/"):
+                            lic = lic[:-2]
+                        lic = lic.strip()
+                        filelics[fn] = lic
+            with open(data_file + ".filelics", 'w') as f:
+                f.write(json.dumps(filelics, sort_keys=True))
 
-        computedlics = {}
-        computedpkglics = {}
-        for r in sourceresult:
-            for subf in r[1]:
-                if subf in filelics:
-                    if r[0] not in computedlics:
-                        computedlics[r[0]] = set()
-                    computedlics[r[0]].add(filelics[subf])
-        #if computedlics:
-        #    bb.warn(str(computedlics))
-        dvar = d.getVar('PKGD')
-        for f in computedlics:
-            shortf = f.replace(dvar, "")
-            found = False
-            for pkg in filemap:
-                if shortf in filemap[pkg]:
-                    found = True
-                    if pkg not in computedpkglics:
-                        computedpkglics[pkg] = set()
-                    computedpkglics[pkg].update(computedlics[f])
-            if not found:
-                bb.warn("%s not in %s" % (f, str(filemap)))
-        #if computedpkglics:
-        #    bb.warn(str(computedpkglics))
-        for pkg in computedpkglics:
-            lic = d.getVar('LICENSE_%s' % (pkg))
-            if not lic:
-                lic = d.getVar('LICENSE')
+            computedlics = {}
+            computedpkglics = {}
+            for r in sourceresult:
+                for subf in r[1]:
+                    if subf in filelics:
+                        if r[0] not in computedlics:
+                            computedlics[r[0]] = set()
+                        computedlics[r[0]].add(filelics[subf])
+            # if computedlics:
+            #    bb.warn(str(computedlics))
+            dvar = d.getVar('PKGD')
+            for f in computedlics:
+                shortf = f.replace(dvar, "")
+                found = False
+                for pkg in filemap:
+                    if shortf in filemap[pkg]:
+                        found = True
+                        if pkg not in computedpkglics:
+                            computedpkglics[pkg] = set()
+                        computedpkglics[pkg].update(computedlics[f])
+                if not found:
+                    bb.warn("%s not in %s" % (f, str(filemap)))
+            # if computedpkglics:
+            #    bb.warn(str(computedpkglics))
+            for pkg in computedpkglics:
+                lic = d.getVar('LICENSE_%s' % (pkg))    
+                if not lic:
+                    lic = d.getVar('LICENSE')
 
-            # Splits the LICENSE values and canonicalise each license
-            # in the set of split license(s)    
-            split_lic = oe.license.list_licenses(lic)
-            spdx_lic = set([canonical_license(d, l) for l in split_lic])
-            if computedpkglics[pkg]:
-                computedpkglicsperpkg = set([])
-                for l in computedpkglics[pkg]:
-                    if l.endswith('-or-later'):
-                        lic_ = l.replace('-or-later', '+')
-                        computedpkglicsperpkg.add(lic_)
-                    elif l.endswith(' WITH Linux-syscall-note'):
-                        if d.getVar("IGNOREWITHLINUXSYSCALLNOTE") == "1":
-                            lic_ = l.replace(' WITH Linux-syscall-note', '')
-                            computedpkglicsperpkg.add(lic_)
-                    else:
-                        computedpkglicsperpkg.add(l)
-            # Displays warnings for licenses found in the recipes and not sources
-            if spdx_lic - computedpkglicsperpkg:
-                bb.warn("License for package %s is %s (source SPDX headers) vs %s (LICENSE)" % (pkg, computedpkglicsperpkg, spdx_lic))
+                # Splits the LICENSE values and canonicalise each license
+                # in the set of split license(s)
+                spdx_lic = split_spdx_lic(d, lic)
+                computedpkglicsperpkg = rem_false_lics(d, computedpkglics[pkg])    
+               
+                # Displays warnings for licenses found in the recipes and not sources
+                if spdx_lic - computedpkglicsperpkg:
+                    package_qa_handle_error("license_source_spdx", f'License for package {pkg} is {computedpkglicsperpkg} (source SPDX headers) vs {spdx_lic} (LICENSE)', d)
 }
 emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse ${PKGDESTWORK}/runtime-rprovides"
 
