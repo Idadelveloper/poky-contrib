@@ -434,3 +434,30 @@ python do_populate_lic_setscene () {
     sstate_setscene(d)
 }
 addtask do_populate_lic_setscene
+
+
+def split_spdx_lic(d, licensestr):
+    """
+    Split the license strings and returns a set of the
+    canonicalised licenses.
+    """
+    import oe.license
+    split_lic = oe.license.list_licenses(licensestr)
+    spdx_lic = set([canonical_license(d, l) for l in split_lic])
+    return spdx_lic
+
+def rem_false_lics(d, pkglic):
+    pkglicsperpkg = set([])
+    for l in pkglic:
+        if l.endswith('-or-later'):
+            # Converts '-or-later' licenses to their canonicalised form
+            lic_ = l.replace('-or-later', '+')
+            pkglicsperpkg.add(lic_)
+        elif l.endswith(' WITH Linux-syscall-note'):
+        # Gets rid of "WITH Linux-syscall-note from license sring"
+            if d.getVar("LICENSE_WITH_LINUX_SYS") == "1":
+                lic_ = l.replace(' WITH Linux-syscall-note', '')
+                pkglicsperpkg.add(lic_)
+        else:
+            pkglicsperpkg.add(l)
+    return pkglicsperpkg
