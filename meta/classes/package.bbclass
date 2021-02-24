@@ -1739,7 +1739,10 @@ fi
                         if lic.endswith("*/"):
                             lic = lic[:-2]
                         lic = lic.strip()
-                        filelics[fn] = lic
+                        if fn.endswith(".h") and lic.endswith("WITH Linux-syscall-note"):
+                            continue
+                        else:
+                            filelics[fn] = lic
             with open(data_file + ".filelics", 'w') as f:
                 f.write(json.dumps(filelics, sort_keys=True))
 
@@ -1765,8 +1768,7 @@ fi
                         computedpkglics[pkg].update(computedlics[f])
                 if not found:
                     bb.warn("%s not in %s" % (f, str(filemap)))
-            # if computedpkglics:
-            #    bb.warn(str(computedpkglics))
+            
             for pkg in computedpkglics:
                 lic = d.getVar('LICENSE_%s' % (pkg))    
                 if not lic:
