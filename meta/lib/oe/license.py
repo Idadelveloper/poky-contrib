@@ -236,3 +236,72 @@ def list_licenses(licensestr):
     except SyntaxError as exc:
         raise LicenseSyntaxError(licensestr, exc)
     return visitor.licenses
+
+
+# SPDX licenses dict
+AGPL = {
+	"AGPL-3.0-only" : "AGPL-3.0",
+	"AGPL-3" : "AGPL-3.0",
+	"AGPLv3.0" : "AGPL-3.0",
+	"AGPLv3" : "AGPL-3.0",
+	"AGPL-3.0-or-later" : "AGPL-3.0+"
+}
+
+GPL = {
+	"GPL-1.0-only" : "GPL-1.0",
+	"GPL-1" : "GPL-1.0",
+	"GPLv1.0" : "GPL-1.0",
+	"GPLv1" : "GPL-1.0",
+	"GPL-1.0-or-later" : "GPL-1.0+",
+	
+	"GPL-2.0-only" : "GPL-2.0",
+	"GPL-2" : "GPL-2.0",
+	"GPLv2.0" : "GPL-2.0",
+	"GPLv2" : "GPL-2.0",
+	"GPL-2.0-or-later" : "GPL-2.0+",
+	
+	"GPL-3.0-only" : "GPL-3.0",
+	"GPL-3" : "GPL-3.0",
+	"GPLv3.0" : "GPL-3.0",
+	"GPLv3" : "GPL-3.0",
+	"GPL-3.0-or-later" : "GPL-3.0+"
+}
+
+LGPL = {
+	"GPL-2.0-only" : "GPL-2.0",
+	"LGPLv2.0" : "LGPL-2.0",
+	"LGPLv2" : "LGPL-2.0",
+	"LGPL-2.0-or-later" : "LGPL-2.0+",
+	
+	"LGPL-2.1-only" : "LGPL-2.1",
+	"LGPLv2.1" : "LGPL-2.1",
+	"LGPLv2.1" : "LGPL-2.1",
+	"LGPL-2.1-or-later" : "LGPL-2.1+",
+	
+	"LGPL-3.0-only" : "LGPL-3.0",
+	"LGPLv3.0" : "LGPL-3.0",
+	"LGPLv3" : "LGPL-3.0",
+	"LGPL-3.0-or-later" : "LGPL-3.0+"
+}
+
+spdxlicences = [AGPL, GPL, LGPL]
+
+
+def canonical_license(license):
+    match = [license]
+    for lic in spdxlicences:
+        if license in lic:
+            match.pop()
+            match.append(lic[license])
+            break
+    return match[0]
+
+def split_spdx_lic(licensestr):
+    """
+    Split the license strings and returns a set of the
+    canonicalised licenses.
+    """
+    split_lic = list_licenses(licensestr)
+    spdx_lic = set([canonical_license(l) for l in split_lic])
+    return spdx_lic
+
