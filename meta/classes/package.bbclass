@@ -1745,7 +1745,7 @@ fi
                             filelics[fn] = lic
             with open(data_file + ".filelics", 'w') as f:
                 f.write(json.dumps(filelics, sort_keys=True))
-
+ 
             computedlics = {}
             computedpkglics = {}
             for r in sourceresult:
@@ -1754,8 +1754,7 @@ fi
                         if r[0] not in computedlics:
                             computedlics[r[0]] = set()
                         computedlics[r[0]].add(filelics[subf])
-            # if computedlics:
-            #    bb.warn(str(computedlics))
+            
             dvar = d.getVar('PKGD')
             for f in computedlics:
                 shortf = f.replace(dvar, "")
@@ -1776,12 +1775,11 @@ fi
 
                 # Splits the LICENSE values and canonicalise each license
                 # in the set of split license(s)
-                spdx_lic = split_spdx_lic(d, lic)
-                computedpkglicsperpkg = rem_false_lics(d, computedpkglics[pkg])    
+                spdx_lic = oe.license.split_spdx_lic(d, lic)    
                
                 # Displays warnings for licenses found in the recipes and not sources
-                if spdx_lic - computedpkglicsperpkg:
-                    package_qa_handle_error("license_source_spdx", f'License for package {pkg} is {computedpkglicsperpkg} (source SPDX headers) vs {spdx_lic} (LICENSE)', d)
+                if spdx_lic - computedpkglics[pkg]:
+                    package_qa_handle_error("license_source_spdx", f'License for package {pkg} is {computedpkglics[pkg]}(source SPDX headers) vs {spdx_lic} (LICENSE)', d)
 }
 emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse ${PKGDESTWORK}/runtime-rprovides"
 
