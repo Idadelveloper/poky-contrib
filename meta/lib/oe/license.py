@@ -251,3 +251,12 @@ def canonical_license(d, license):
             lic += '+'
     return lic or license
 
+def split_spdx_lic(d, licensestr):
+    """
+    Split the license strings and returns a set of the
+    canonicalised licenses.
+    """
+    split_lic = list_licenses(licensestr)
+    spdx_lic = set([canonical_license(d, l) for l in split_lic])
+    return spdx_lic
+    
