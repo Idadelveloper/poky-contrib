@@ -3,6 +3,8 @@
 #
 """Code for parsing OpenEmbedded license strings"""
 
+import subprocess
+import bb
 import ast
 import re
 from fnmatch import fnmatchcase as fnmatch
@@ -237,7 +239,7 @@ def list_licenses(licensestr):
         raise LicenseSyntaxError(licensestr, exc)
     return visitor.licenses
 
-def canonical_license(d, license):
+def canonical_license(license, d):
     """
     Return the canonical (SPDX) form of the license if available (so GPLv3
     becomes GPL-3.0), for the license named 'X+', return canonical form of
@@ -251,12 +253,38 @@ def canonical_license(d, license):
             lic += '+'
     return lic or license
 
-def split_spdx_lic(d, licensestr):
+def split_spdx_lic(licensestr,d):
     """
     Split the license strings and returns a set of the
     canonicalised licenses.
     """
     split_lic = list_licenses(licensestr)
-    spdx_lic = set([canonical_license(d, l) for l in split_lic])
+    spdx_lic = set([canonical_license(l, d) for l in split_lic])
     return spdx_lic
+
+def get_filelics(dirs):
+    """"
+    This function returns a dictionary of file paths (keys) and their corresponding SPDX header identifiers (values).
+    """
+    filelics = {}
+    for dirent in dirs:
+        p = subprocess.Popen(["grep", 'SPDX-License-Identifier:', '-R','-I'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dirent)
+        out, err = p.communicate()
+        if p.returncode == 0:
+            for l in out.decode("utf-8").split("\n"):
+                l = l.strip()
+                if not l:
+                    continue
+                l = l.split(":")
+                if len(l) < 3:
+                    bb.warn(str(l))
+                    continue
+                fn = "/" + l[0]
+                lic = l[2].strip()
+                if lic.endswith("*/"):
+                    lic = lic[:-2]
+                lic = lic.strip()
+                filelics[fn] = lic
+    return filelics
+
     
