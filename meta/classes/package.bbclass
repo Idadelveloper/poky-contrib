@@ -1721,30 +1721,13 @@ fi
             with open(data_file + ".srclist", 'w') as f:
                 f.write(json.dumps(sources, sort_keys=True))
 
+            flics = oe.license.get_filelics([d.getVar('PKGD'), d.getVar('STAGING_DIR_TARGET')])
             filelics = {}
-            for dirent in [d.getVar('PKGD'), d.getVar('STAGING_DIR_TARGET')]:
-                p = subprocess.Popen(["grep", 'SPDX-License-Identifier:', '-R', '-I'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dirent)
-                out, err = p.communicate()
-                if p.returncode == 0:
-                    for l in out.decode("utf-8").split("\n"):
-                        l = l.strip()
-                        if not l:
-                            continue
-                        l = l.split(":")
-                        if len(l) < 3:
-                            bb.warn(str(l))
-                            continue
-                        fn = "/" + l[0]
-                        lic = l[2].strip()
-                        if lic.endswith("*/"):
-                            lic = lic[:-2]
-                        lic = lic.strip()
-                        if fn.endswith(".h") and lic.endswith("WITH Linux-syscall-note"):
-                            continue
-                        else:
-                            filelics[fn] = lic
-            with open(data_file + ".filelics", 'w') as f:
-                f.write(json.dumps(filelics, sort_keys=True))
+            for k, v in flics.items():
+                if k.endswith(".h") and v.endswith("WITH Linux-syscall-note"):
+                    continue
+                else:
+                    filelics[k] = v
  
             computedlics = {}
             computedpkglics = {}
@@ -1775,7 +1758,7 @@ fi
 
                 # Splits the LICENSE values and canonicalise each license
                 # in the set of split license(s)
-                spdx_lic = oe.license.split_spdx_lic(d, lic)    
+                spdx_lic = oe.license.split_spdx_lic(lic, d)    
                
                 # Displays warnings for licenses found in the recipes and not sources
                 if spdx_lic - computedpkglics[pkg]:
