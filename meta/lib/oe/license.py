@@ -3,6 +3,8 @@
 #
 """Code for parsing OpenEmbedded license strings"""
 
+import subprocess
+import bb
 import ast
 import re
 from fnmatch import fnmatchcase as fnmatch
@@ -266,3 +268,28 @@ def split_spdx_lic(licensestr,d):
     split_lic = list_licenses(licensestr)
     spdx_lic = set([canonical_license(l, d) for l in split_lic])
     return spdx_lic
+
+def get_filelics(dirs):
+    """"
+    This function returns a dictionary of file paths (keys) and their corresponding SPDX header identifiers (values).
+    """
+    filelics = {}
+    for dirent in dirs:
+        p = subprocess.Popen(["grep", 'SPDX-License-Identifier:', '-R','-I'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=dirent)
+        out, err = p.communicate()
+        if p.returncode == 0:
+            for l in out.decode("utf-8").split("\n"):
+                l = l.strip()
+                if not l:
+                    continue
+                l = l.split(":")
+                if len(l) < 3:
+                    bb.warn(str(l))
+                    continue
+                fn = "/" + l[0]
+                lic = l[2].strip()
+                if lic.endswith("*/"):
+                    lic = lic[:-2]
+                lic = lic.strip()
+                filelics[fn] = lic
+    return filelics
