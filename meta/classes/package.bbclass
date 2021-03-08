@@ -1545,6 +1545,7 @@ PKGDESTWORK = "${WORKDIR}/pkgdata"
 PKGDATA_VARS = "PN PE PV PR PKGE PKGV PKGR LICENSE DESCRIPTION SUMMARY RDEPENDS RPROVIDES RRECOMMENDS RSUGGESTS RREPLACES RCONFLICTS SECTION PKG ALLOW_EMPTY FILES CONFFILES FILES_INFO PACKAGE_ADD_METADATA pkg_postinst pkg_postrm pkg_preinst pkg_prerm"
 
 python emit_pkgdata() {
+    import oe.license
     from glob import glob
     import json
     import subprocess
@@ -1742,8 +1743,8 @@ fi
                     if r[0] not in computedlics:
                         computedlics[r[0]] = set()
                     computedlics[r[0]].add(filelics[subf])
-        #if computedlics:
-        #    bb.warn(str(computedlics))
+        
+        
         dvar = d.getVar('PKGD')
         for f in computedlics:
             shortf = f.replace(dvar, "")
@@ -1756,13 +1757,19 @@ fi
                     computedpkglics[pkg].update(computedlics[f])
             if not found:
                 bb.warn("%s not in %s" % (f, str(filemap)))
-        #if computedpkglics:
-        #    bb.warn(str(computedpkglics))
+        
         for pkg in computedpkglics:
             lic = d.getVar('LICENSE_%s' % (pkg))
             if not lic:
                 lic = d.getVar('LICENSE')
-            bb.warn("License for package %s is %s vs %s" % (pkg, computedpkglics[pkg], lic))
+
+            # Splits the LICENSE values and canonicalise each license
+            # in the set of split license(s)
+            spdx_lic = oe.license.split_spdx_lic(lic, d)    
+            
+            # Displays warnings for licenses found in the recipes and not sources
+            if spdx_lic - computedpkglics[pkg]:
+                bb.warn("License for package %s is %s vs %s" % (pkg, computedpkglics[pkg], spdx_lic))
 }
 emit_pkgdata[dirs] = "${PKGDESTWORK}/runtime ${PKGDESTWORK}/runtime-reverse ${PKGDESTWORK}/runtime-rprovides"
 
