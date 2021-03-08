@@ -243,3 +243,26 @@ def list_licenses(licensestr):
     except SyntaxError as exc:
         raise LicenseSyntaxError(licensestr, exc)
     return visitor.licenses
+
+def canonical_license(license, d):
+    """
+    Return the canonical (SPDX) form of the license if available (so GPLv3
+    becomes GPL-3.0), for the license named 'X+', return canonical form of
+    'X' if available and the tailing '+' (so GPLv3+ becomes GPL-3.0+),
+    or the passed license if there is no canonical form.
+    """
+    lic = d.getVarFlag('SPDXLICENSEMAP', license) or ""
+    if not lic and license.endswith('+'):
+        lic = d.getVarFlag('SPDXLICENSEMAP', license.rstrip('+'))
+        if lic:
+            lic += '+'
+    return lic or license
+
+def split_spdx_lic(licensestr,d):
+    """
+    Split the license strings and returns a set of the
+    canonicalised licenses.
+    """
+    split_lic = list_licenses(licensestr)
+    spdx_lic = set([canonical_license(l, d) for l in split_lic])
+    return spdx_lic
